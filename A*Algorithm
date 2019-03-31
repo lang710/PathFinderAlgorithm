@@ -1,0 +1,290 @@
+#include <iostream>
+#include <cmath>
+#include <vector>
+
+using namespace std;
+
+struct Point{
+    int x;
+    int y;
+};
+
+struct Node{
+    int x,y;
+    int h,g,f;
+    Node *parent;
+};
+
+struct FNode{
+    int x,y;
+    float h;
+    FNode *parent;
+};
+
+void pathFinder(vector<vector<int>> visit,vector<Point> out,vector<vector<Point>> &results,Point spoint, Point epoint){
+    if(spoint.x==epoint.x&&spoint.y==epoint.y){
+        out.push_back(spoint);
+        visit[spoint.x][spoint.y]=1;
+        results.push_back(out);
+        return;
+    }
+
+    int h1=0x0fff,h2=0x0fff,h3=0x0fff,h4=0x0fff;
+    if(spoint.x-1>=0&&visit[spoint.x-1][spoint.y]==0)
+        h1=abs(spoint.x-1-epoint.x)+abs(spoint.y-epoint.y);        //left
+    if(spoint.x+1<visit.size()&&visit[spoint.x+1][spoint.y]==0)
+        h2=abs(spoint.x+1-epoint.x)+abs(spoint.y-epoint.y);        //right
+    if(spoint.y-1>=0&&visit[spoint.x][spoint.y-1]==0)
+        h3=abs(spoint.x-epoint.x)+abs(spoint.y-1-epoint.y);        //top
+    if(spoint.y+1<visit[0].size()&&visit[spoint.x][spoint.y+1]==0)
+        h4=abs(spoint.x-epoint.x)+abs(spoint.y+1-epoint.y);         //bottom
+    int min=h1;
+    if(h2<min)
+        min=h2;
+    if(h3<min)
+        min=h3;
+    if(h4<min)
+        min=h4;
+    if(min!=0x0fff) {
+        out.push_back(spoint);
+        visit[spoint.x][spoint.y]=1;
+        if (min == h1) {
+            Point next={spoint.x-1,spoint.y};
+            pathFinder(visit,out,results,next,epoint);
+        }
+        if(min == h2){
+            Point next={spoint.x+1,spoint.y};
+            pathFinder(visit,out,results,next,epoint);
+        }
+        if(min == h3){
+            Point next={spoint.x,spoint.y-1};
+            pathFinder(visit,out,results,next,epoint);
+        }
+        if(min == h4){
+            Point next={spoint.x,spoint.y+1};
+            pathFinder(visit,out,results,next,epoint);
+        }
+    }
+}
+
+void FirstBestFinder(vector<vector<int>> closedSet, Point spoint, Point epoint){
+    int sx=spoint.x,sy=spoint.y;
+    int sh=abs(spoint.x-epoint.x)+abs(spoint.y-epoint.y);
+    FNode *currentNode=new FNode;
+    currentNode->x=sx;currentNode->y=sy;
+    currentNode->h=sh;
+    currentNode->parent=NULL;
+
+    vector<FNode*> openSet;
+    closedSet[currentNode->x][currentNode->y]=1;
+    do{
+        int cx,cy;
+        for(int direction=0;direction<4;direction++){
+            if(direction==0){
+                cx=currentNode->x-1;
+                cy=currentNode->y;
+            }else if(direction==1){
+                cx=currentNode->x+1;
+                cy=currentNode->y;
+            }else if(direction==2){
+                cx=currentNode->x;
+                cy=currentNode->y-1;
+            }else{
+                cx=currentNode->x;
+                cy=currentNode->y+1;
+            }
+
+            if(cx>=0&&cx<closedSet.size()&&cy>=0&&cy<closedSet[0].size()&&closedSet[cx][cy]==0){
+                bool exist=false;
+                for(int i=0;i<openSet.size();i++){
+                    if(openSet[i]->x==cx&&openSet[i]->y==cy){
+                        openSet[i]->h=abs(cx-epoint.x)+abs(cy-epoint.y);
+                        openSet[i]->parent=currentNode;
+                        exist=true;
+                        break;
+                    }
+                }
+                if(!exist){
+                    FNode *newNode=new FNode;
+                    newNode->x=cx;newNode->y=cy;
+                    newNode->h=abs(cx-epoint.x)+abs(cy-epoint.y);
+                    newNode->parent=currentNode;
+                    openSet.push_back(newNode);
+                }
+            }
+        }
+
+        if(openSet.empty())
+            break;
+
+        int lowest=0;
+        for(int i=1;i<openSet.size();i++)
+            if(openSet[lowest]->h>openSet[i]->h)
+                lowest=i;
+        currentNode=openSet[lowest];
+        closedSet[currentNode->x][currentNode->y]=1;
+        openSet.erase(openSet.begin()+lowest);
+    }while(!(currentNode->x==epoint.x&&currentNode->y==epoint.y));
+
+    if(currentNode->x==epoint.x&&currentNode->y==epoint.y){
+        while(currentNode!=NULL){
+            cout<<currentNode->x<<" "<<currentNode->y<<"|";
+            currentNode=currentNode->parent;
+        }
+        cout<<endl;
+    }
+
+}
+
+void AStarFinder(vector<vector<int>> closedSet,Point spoint,Point epoint){
+    int sx=spoint.x,sy=spoint.y;
+    int sh=abs(spoint.x-epoint.x)+abs(spoint.y-epoint.y);
+    Node node={sx,sy,sh,0,sh,NULL};
+    Node *currentNode=&node;
+
+    vector<Node*> openSet;
+    closedSet[currentNode->x][currentNode->y]=1;
+    do{
+        int cx,cy;
+        for(int direction=0;direction<4;direction++) {
+            if(direction==0){
+                cx=currentNode->x-1;
+                cy=currentNode->y;
+            }else if(direction==1){
+                cx=currentNode->x+1;
+                cy=currentNode->y;
+            }else if(direction==2){
+                cx=currentNode->x;
+                cy=currentNode->y-1;
+            }else{
+                cx=currentNode->x;
+                cy=currentNode->y+1;
+            }
+
+            if ((cx >= 0 && cx<closedSet.size() && cy>=0 &&cy<closedSet[0].size())&& closedSet[cx][cy] == 0) {
+                bool exist = false;
+                for (int i = 0; i < openSet.size(); i++) {
+                    if (openSet[i]->x == cx && openSet[i]->y == cy) {
+                        int new_g = currentNode->g + 1;
+                        if (new_g < openSet[i]->g) {
+                            openSet[i]->parent = currentNode;
+                            openSet[i]->g = new_g;
+                            openSet[i]->f = openSet[i]->g + openSet[i]->h;
+                            exist = true;
+                            break;
+                        }
+                    }
+                }
+                if (!exist) {
+                    int h = abs(cx- epoint.x) + abs(cy- epoint.y);
+                    int g = currentNode->g + 1;
+                    int f = g + h;
+                    Node *newNode = new Node;
+                    newNode->x=cx;newNode->y=cy;
+                    newNode->h=h;newNode->g=g;newNode->f=f;
+                    newNode->parent=currentNode;
+                    openSet.push_back(newNode);
+                }
+            }
+        }
+
+        if(openSet.empty())
+            break;
+
+        int lowest=0;
+        for(int i=1;i<openSet.size();i++)
+            if (openSet[lowest]->f > openSet[i]->f)
+                lowest = i;
+
+        currentNode=openSet[lowest];
+        closedSet[currentNode->x][currentNode->y]=1;
+        openSet.erase(openSet.begin()+lowest);
+    }while(!(currentNode->x==epoint.x&&currentNode->y==epoint.y));
+
+    if(currentNode->x==epoint.x&&currentNode->y==epoint.y){
+        while(currentNode!=NULL){
+            cout<<currentNode->x<<","<<currentNode->y<<"|";
+            currentNode=currentNode->parent;
+        }
+        cout<<endl;
+    }
+}
+
+
+int main(){
+
+    int n;
+    cin>>n;
+    //vector<vector<int>> map(n,vector<int>(n));
+    vector<vector<int>> visit(n,vector<int>(n,0));
+    int m;
+    cin>>m;
+    int x,y;
+    for(int i=0;i<m;i++){
+        cin>>x>>y;
+        visit[x][y]=1;
+    }
+
+    Point spoint,epoint;
+    cin>>spoint.x>>spoint.y>>epoint.x>>epoint.y;
+
+    vector<vector<Point>> results;
+    vector<Point> out;
+    pathFinder(visit,out,results,spoint,epoint);
+    for(int i=0;i<results.size();i++){
+        for(int j=0;j<results[i].size();j++){
+            cout<<results[i][j].x<<","<<results[i][j].y<<"|";
+        }
+        cout<<endl;
+    }
+
+
+    FirstBestFinder(visit,spoint,epoint);
+
+    AStarFinder(visit,spoint,epoint);
+
+    return 0;
+}
+
+/*
+5
+6
+0 3
+1 3
+2 3
+3 3
+3 1
+3 2
+1 0
+1 4
+ */
+
+/*
+0 0 0 1 0
+s 0 0 1 e
+0 0 0 1 0
+0 0 0 1 0
+0 0 0 0 0
+
+ */
+
+/*
+5
+7
+1 1
+1 2
+1 4
+3 1
+3 3
+3 4
+4 0
+0 0
+4 4
+ */
+/*
+0 0 0 0 0
+0 1 1 0 1
+0 0 0 0 0
+0 1 0 1 1
+1 0 0 0 0
+ */
